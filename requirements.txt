@@ -1,0 +1,5 @@
+deep-translator
+Flask
+openpyxl
+playwright
+python-dotenv

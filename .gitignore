@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.py[cod]
+*/*.txt
+storesDB/stores.db
+.env
+utils/config.py
