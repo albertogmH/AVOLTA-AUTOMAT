@@ -4,4 +4,3 @@ __pycache__/
 */*.txt
 storesDB/stores.db
 .env
-utils/config.py
