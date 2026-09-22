@@ -40,6 +40,7 @@ def load_stores(division=None):
         if store_url in NULL_VALUES or str(store_url).strip() in NULL_VALUES:
             continue
         stores.append({
+            "division": str(row[idx["division"]]).strip(),
             "store_id": row[idx["store_id"]],
             "store_url": str(store_url).strip(),
             "language": extract_language(str(store_url).strip()),
@@ -90,25 +91,56 @@ terms = parse_list(input("Enter terms (comma-separated): "))
 while not terms:
     terms = parse_list(input("No terms provided. Enter terms (comma-separated): "))
 
-selection_mode = input("Select stores by (1) division with banned sites or (2) specific URLs [1]: ").strip() or "1"
-while selection_mode not in {"1", "2"}:
-    selection_mode = input("Invalid option. Select (1) division or (2) specific URLs [1]: ").strip() or "1"
+selection_mode = input(
+    "Select stores:\n"
+    "  1. Division with banned sites\n"
+    "  2. Specific URLs\n"
+    "  3. All divisions\n"
+    "Option [1]: "
+).strip() or "1"
+while selection_mode not in {"1", "2", "3"}:
+    selection_mode = input(
+        "Invalid option. Select stores:\n"
+        "  1. Division with banned sites\n"
+        "  2. Specific URLs\n"
+        "  3. All divisions\n"
+        "Option [1]: "
+    ).strip() or "1"
 
-if selection_mode == "1":
-    division = input("Enter division (1-10): ").strip()
-    while not division.isdigit() or not (1 <= int(division) <= 10):
-        division = input("Invalid division. Enter division (1-10): ").strip()
+if selection_mode in {"1", "3"}:
+    if selection_mode == "1":
+        division = input("Enter division (1-10): ").strip()
+        while not division.isdigit() or not (1 <= int(division) <= 10):
+            division = input("Invalid division. Enter division (1-10): ").strip()
+        stores = load_stores(division)
+    else:
+        stores = load_stores()
+        excluded_divisions = parse_list(input(
+            "Exclude divisions (comma-separated, e.g. 1, 2, 5; empty for none): "
+        ))
+        while any(not value.isdigit() or not (1 <= int(value) <= 10) for value in excluded_divisions):
+            excluded_divisions = parse_list(input(
+                "Invalid divisions. Enter values from 1 to 10 (comma-separated; empty for none): "
+            ))
+        excluded_divisions = set(excluded_divisions)
+        stores = [store for store in stores if store["division"] not in excluded_divisions]
 
-    stores = load_stores(division)
     if not stores:
-        print(f"No stores with a valid URL found for division {division}")
+        print("No stores with a valid URL found")
         sys.exit(1)
 
-    banned_urls = parse_list(input("Enter banned sites (comma-separated, e.g. puertoplata.shopdutyfree.com, empty for none): "))
-    banned_set = {extract_host(u) for u in banned_urls}
-    allowed_stores = [s for s in stores if extract_host(s["store_url"]) not in banned_set]
+    banned_entries = parse_list(input(
+        "Enter banned sites or store IDs (comma-separated, e.g. puertoplata.shopdutyfree.com, 172, 175; empty for none): "
+    ))
+    banned_store_ids = {entry for entry in banned_entries if entry.isdigit()}
+    banned_hosts = {extract_host(entry) for entry in banned_entries if not entry.isdigit()}
+    allowed_stores = [
+        store for store in stores
+        if str(store["store_id"]).strip() not in banned_store_ids
+        and extract_host(store["store_url"]) not in banned_hosts
+    ]
 
-    skipped = [s for s in stores if extract_host(s["store_url"]) in banned_set]
+    skipped = [store for store in stores if store not in allowed_stores]
     if skipped:
         print(f"Skipping {len(skipped)} banned store(s):")
         for s in skipped:
@@ -128,14 +160,15 @@ if not allowed_stores:
     print("No stores match the selected criteria")
     sys.exit(1)
 
+has_redirect = True
 is_external = ask_bool("Are the URLs external?", default=False)
+localized = ask_bool("Is the slug localized (one per language)?", default=False)
+slugs = {}
+slug = ""
 
 # For external links the value is used as the full redirect URL, otherwise it is a path slug.
 value_label = "full URL" if is_external else "slug"
-localized = ask_bool("Is the slug localized (one per language)?", default=False)
-
 languages = sorted({s["language"] for s in allowed_stores if s["language"]})
-slugs = {}
 if localized:
     print(f"Languages found: {', '.join(languages) if languages else '(none)'}")
     for lang in languages:
@@ -148,12 +181,13 @@ output_name = input("Enter output file name (empty for date): ").strip()
 
 startTime = time.time()
 
-rows = []
+rows_by_division = {}
 for store in allowed_stores:
     value = slugs.get(store["language"], "") if localized else slug
-    redirect = value
+    redirect = value if has_redirect else ""
+    division_rows = rows_by_division.setdefault(store["division"], [])
     for term in terms:
-        rows.append({
+        division_rows.append({
             "query_text": term,
             "storeview_id": store["store_id"],
             "store_id": "",
@@ -164,14 +198,41 @@ for store in allowed_stores:
         })
 
 suffix = output_name or time.strftime("%d%m%H%M")
-output_path = os.path.join(os.path.dirname(__file__), f"searchterm_import_{suffix}.csv")
-with open(output_path, "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=COLUMNS)
-    writer.writeheader()
-    writer.writerows(rows)
+if selection_mode == "3":
+    output_directory = os.path.join(os.path.dirname(__file__), suffix)
+    os.makedirs(output_directory, exist_ok=True)
+    output_paths = []
+    for division, division_rows in sorted(rows_by_division.items(), key=lambda item: int(item[0])):
+        output_path = os.path.join(
+            output_directory, f"searchterm_import_DIV{division}{suffix}.csv"
+        )
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=COLUMNS)
+            writer.writeheader()
+            writer.writerows(division_rows)
+        output_paths.append(output_path)
+else:
+    output_path = os.path.join(os.path.dirname(__file__), f"searchterm_import_{suffix}.csv")
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=COLUMNS)
+        writer.writeheader()
+        writer.writerows(next(iter(rows_by_division.values())))
+    output_paths = [output_path]
 
-print(f"\nGenerated {len(rows)} row(s) from {len(allowed_stores)} store(s) x {len(terms)} term(s)")
-print(f"Table saved to: {output_path}")
+total_rows = sum(len(division_rows) for division_rows in rows_by_division.values())
+print(f"\nGenerated {total_rows} row(s) from {len(allowed_stores)} store(s) x {len(terms)} term(s)")
+if selection_mode == "3":
+    for output_path in output_paths:
+        division = re.search(r"DIV(\d+)", os.path.basename(output_path)).group(1)
+        division_rows = rows_by_division[division]
+        division_stores = sum(store["division"] == division for store in allowed_stores)
+        print(
+            f"DIVISION {division}: {len(division_rows)} row(s) from "
+            f"{division_stores} store(s) x {len(terms)} term(s)\n"
+            f"Table saved: {output_path}"
+        )
+else:
+    print(f"Table saved to: {output_paths[0]}")
 
 elapsed = time.time() - startTime
 print(f"Task completed in: {elapsed:.2f} seconds")
