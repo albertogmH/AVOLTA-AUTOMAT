@@ -25,7 +25,7 @@ def parse_list(raw):
     return [item.strip() for item in re.split(r"\s*,\s*", raw) if item.strip()]
 
 
-def load_stores(division):
+def load_stores(division=None):
     wb = openpyxl.load_workbook(STORES_XLSX, read_only=True, data_only=True)
     ws = wb.active
     rows = ws.iter_rows(values_only=True)
@@ -34,7 +34,7 @@ def load_stores(division):
 
     stores = []
     for row in rows:
-        if str(row[idx["division"]]).strip() != str(division):
+        if division is not None and str(row[idx["division"]]).strip() != str(division):
             continue
         store_url = row[idx["store_url"]]
         if store_url in NULL_VALUES or str(store_url).strip() in NULL_VALUES:
@@ -63,6 +63,20 @@ def extract_host(url):
     return host.split("/")[0].lower()
 
 
+def normalize_url(url):
+    return url.strip().rstrip("/").lower()
+
+
+def matches_selected_url(store_url, selected_url):
+    store_url = normalize_url(store_url)
+    selected_url = normalize_url(selected_url)
+    return (
+        store_url == selected_url
+        or store_url.startswith(selected_url + "/")
+        or extract_host(store_url) == extract_host(selected_url)
+    )
+
+
 def ask_bool(prompt, default=False):
     default_label = "y" if default else "n"
     answer = input(f"{prompt} (y/n) [default {default_label}]: ").strip().lower()
@@ -76,28 +90,42 @@ terms = parse_list(input("Enter terms (comma-separated): "))
 while not terms:
     terms = parse_list(input("No terms provided. Enter terms (comma-separated): "))
 
-division = input("Enter division (1-10): ").strip()
-while not division.isdigit() or not (1 <= int(division) <= 10):
-    division = input("Invalid division. Enter division (1-10): ").strip()
+selection_mode = input("Select stores by (1) division with banned sites or (2) specific URLs [1]: ").strip() or "1"
+while selection_mode not in {"1", "2"}:
+    selection_mode = input("Invalid option. Select (1) division or (2) specific URLs [1]: ").strip() or "1"
 
-banned_urls = parse_list(input("Enter banned sites (comma-separated, e.g. puertoplata.shopdutyfree.com, empty for none): "))
+if selection_mode == "1":
+    division = input("Enter division (1-10): ").strip()
+    while not division.isdigit() or not (1 <= int(division) <= 10):
+        division = input("Invalid division. Enter division (1-10): ").strip()
 
-stores = load_stores(division)
-if not stores:
-    print(f"No stores with a valid URL found for division {division}")
-    sys.exit(1)
+    stores = load_stores(division)
+    if not stores:
+        print(f"No stores with a valid URL found for division {division}")
+        sys.exit(1)
 
-banned_set = {extract_host(u) for u in banned_urls}
-allowed_stores = [s for s in stores if extract_host(s["store_url"]) not in banned_set]
+    banned_urls = parse_list(input("Enter banned sites (comma-separated, e.g. puertoplata.shopdutyfree.com, empty for none): "))
+    banned_set = {extract_host(u) for u in banned_urls}
+    allowed_stores = [s for s in stores if extract_host(s["store_url"]) not in banned_set]
 
-skipped = [s for s in stores if extract_host(s["store_url"]) in banned_set]
-if skipped:
-    print(f"Skipping {len(skipped)} banned store(s):")
-    for s in skipped:
-        print(f"  - {s['store_url']}")
+    skipped = [s for s in stores if extract_host(s["store_url"]) in banned_set]
+    if skipped:
+        print(f"Skipping {len(skipped)} banned store(s):")
+        for s in skipped:
+            print(f"  - {s['store_url']}")
+else:
+    selected_urls = parse_list(input("Enter URLs or sites to include (comma-separated): "))
+    while not selected_urls:
+        selected_urls = parse_list(input("No URLs provided. Enter URLs or sites to include (comma-separated): "))
+
+    stores = load_stores()
+    allowed_stores = [
+        store for store in stores
+        if any(matches_selected_url(store["store_url"], selected_url) for selected_url in selected_urls)
+    ]
 
 if not allowed_stores:
-    print("No stores left after applying the banned list")
+    print("No stores match the selected criteria")
     sys.exit(1)
 
 is_external = ask_bool("Are the URLs external?", default=False)
@@ -116,6 +144,7 @@ else:
     slug = input(f"Enter {value_label}: ").strip()
 
 display_in_terms = ask_bool("Show terms in suggested?", default=False)
+output_name = input("Enter output file name (empty for date): ").strip()
 
 startTime = time.time()
 
@@ -134,7 +163,8 @@ for store in allowed_stores:
             "is_external": 1 if is_external else 0,
         })
 
-output_path = os.path.join(os.path.dirname(__file__), f"search_terms_import.csv")
+suffix = output_name or time.strftime("%d%m%H%M")
+output_path = os.path.join(os.path.dirname(__file__), f"searchterm_import_{suffix}.csv")
 with open(output_path, "w", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=COLUMNS)
     writer.writeheader()
