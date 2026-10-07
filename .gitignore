@@ -4,5 +4,6 @@ __pycache__/
 .DS_Store
 */*.txt
 searchTermBulkImport/searchterm_import*.csv
+searchTermBulkImport/*
 storesDB/stores.db
 .env

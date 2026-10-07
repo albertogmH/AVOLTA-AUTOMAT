@@ -3,7 +3,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import time
 from playwright.sync_api import sync_playwright
-from utils.config import CREDENTIALS, DIVISIONS, DIVISIONS_ADMIN, DIVISIONS_CLP, EMPTY_CLP_VALUES, DEFAULT_CLP_LABEL
+from utils.config import MAGENTO_CREDENTIALS, DIVISIONS, DIVISIONS_URL, DIVISIONS_CLP, EMPTY_CLP_VALUES, DEFAULT_CLP_LABEL
+from utils.functions import login_magento_admin
 
 
 def getDefaultValue(page, url):
@@ -48,17 +49,12 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=False)
     page = browser.new_page()
 
-    adminURL = DIVISIONS_ADMIN[division]
+    adminURL = f"{DIVISIONS_URL[division]}dashboard"
     divisionURL = DIVISIONS_CLP[division]
 
     # Login to the admin panel
-    page.goto(adminURL.format(category_id=categoryId, store_id=1))
-    page.wait_for_selector("input#username")
-    page.fill("input#username", CREDENTIALS["username"])
-    page.fill("input#login", CREDENTIALS["password"])
-    page.click("button.action-login")
-
-    page.wait_for_load_state("networkidle")
+    credentials = MAGENTO_CREDENTIALS[division]
+    login_magento_admin(page, adminURL, credentials["username"], credentials["password"])
 
     # Get store views IDs
     page.goto(divisionURL.format(category_id=categoryId, store_id=1))

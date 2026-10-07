@@ -24,7 +24,7 @@ playwright install
 
 ### Configuracion local
 
-Copie `.env.example` como `.env` y complete las cuatro credenciales locales antes de ejecutar los scripts que requieren autenticacion:
+Copie `.env.example` como `.env` y complete las credenciales locales necesarias antes de ejecutar los scripts que requieren autenticacion:
 
 ```bash
 cp .env.example .env
@@ -92,7 +92,7 @@ playwright install
 
 ### Local configuration
 
-Copy `.env.example` to `.env` and complete the four local credentials before running scripts that require authentication:
+Copy `.env.example` to `.env` and complete the local credentials needed before running scripts that require authentication:
 
 ```bash
 cp .env.example .env
