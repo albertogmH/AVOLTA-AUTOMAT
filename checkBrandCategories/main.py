@@ -49,6 +49,12 @@ def wait_for_grid_reload(page):
     mask.wait_for(state="hidden", timeout=20000)
     page.wait_for_load_state("networkidle")
 
+    # Wait for either the filtered rows or the "no records" row, so the grid is never read mid-render
+    page.wait_for_selector(
+        "table[data-role='grid'] tbody tr.data-row, table[data-role='grid'] tbody tr.data-grid-tr-no-data",
+        timeout=20000
+    )
+
 
 def find_brand_by_uri(page, uri):
     rows = extract_grid_rows(page)
@@ -93,9 +99,6 @@ def get_brand_items(page, division_url, listing_url, brand_id, featured_key="Fea
     rows = extract_grid_rows(page)
     items = []
     for row in rows:
-        # Only keep active (status 1 / Enabled) items
-        if row.get("Status", "").strip().lower() not in ("1", "enabled"):
-            continue
         items.append({
             "ID": row.get("ID", ""),
             "Name": row.get("Name", ""),
@@ -192,13 +195,19 @@ for division in selected_divisions:
 
     categories = category_results.get(division, [])
     print(f"  Categories ({len(categories)})")
-    for item in categories:
+    categories_sorted = sorted(
+        categories, key=lambda item: item["Status"].strip().lower() not in ("1", "enabled")
+    )
+    for item in categories_sorted:
         suffix = " (Enabled)" if item["Status"].strip().lower() in ("1", "enabled") else ""
         print(f"    ID: {item['ID']} - {item['Name']}{suffix}")
 
     collections = collection_results.get(division, [])
     print(f"  Collections ({len(collections)})")
-    for item in collections:
+    collections_sorted = sorted(
+        collections, key=lambda item: item["Featured"].strip().lower() not in ("1", "yes", "true")
+    )
+    for item in collections_sorted:
         suffix = " (Featured)" if item["Featured"].strip().lower() in ("1", "yes", "true") else ""
         print(f"    ID: {item['ID']} - {item['Name']}{suffix}")
 
