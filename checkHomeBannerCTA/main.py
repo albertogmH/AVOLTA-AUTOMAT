@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import time
 from playwright.sync_api import sync_playwright
 from utils.config import APP_CREDENTIALS, APP_PROD_URL, APP_STAGING_URL, APP_PROD_HOMEID, APP_STAGING_HOMEID, APP_DEFAULT_LANGUAGE, APP_LANGUAGES
-from deep_translator import GoogleTranslator
+from local_translation import LocalTranslator
 
 ENVIRONMENTS = {
     "PROD": {
@@ -23,49 +23,6 @@ ENVIRONMENTS = {
         "home_id": APP_STAGING_HOMEID,
     },
 }
-
-# Mapping from Umbraco culture codes to Google Translate language codes
-TRANSLATE_LANG_MAP = {
-    'ar': 'ar',    
-    'zh': 'zh-CN', 
-    'zh-HK': 'zh-TW', 
-    'zh-CN': 'zh-CN',
-    'da': 'da',    
-    'fi-FI': 'fi', 
-    'fr': 'fr',        
-    'de': 'de',
-    'el': 'el',    
-    'id': 'id',    
-    'it-IT': 'it',     
-    'ko': 'ko',
-    'ms': 'ms',    
-    'no': 'no',    
-    'pt-BR': 'pt',     
-    'ru': 'ru',
-    'es': 'es',    
-    'sv-SE': 'sv', 
-    'th-TH': 'th',     
-    'tr-TR': 'tr',
-    'vi': 'vi',
-}
-
-def back_translate_batch(items, lang_code):
-    google_lang = TRANSLATE_LANG_MAP.get(lang_code, lang_code.split('-')[0])
-    translations = [""] * len(items)
-    to_translate = [(i, text) for i, text in enumerate(items)
-                    if text not in ("[Empty]", "[Missing]", "")]
-    if not to_translate:
-        return translations
-    try:
-        translator = GoogleTranslator(source=google_lang, target='en')
-        texts = [t for _, t in to_translate]
-        translated_texts = translator.translate_batch(texts)
-        for (i, _), translated in zip(to_translate, translated_texts):
-            translations[i] = translated or ""
-    except Exception as e:
-        print(f"\n  [Translation error for {lang_code}: {e}]")
-    return translations
-
 
 def login_umbraco(page, environment):
     target = ENVIRONMENTS[environment]
@@ -165,10 +122,16 @@ environment = input("Type PROD or STG: ").strip().upper()
 while environment not in ENVIRONMENTS:
     environment = input("Invalid environment. Type PROD or STG: ").strip().upper()
 
-do_translate = input("Add back-translation to report? (y/n): ").strip().lower() == "y"
+do_translate = input("Add local back-translation to report? (y/n): ").strip().lower() == "y"
 save = input("Save report to file? (y/n): ").strip().lower()
 
 startTime = time.time()
+
+if do_translate:
+    try:
+        local_translator = LocalTranslator()
+    except Exception as error:
+        raise SystemExit(f"Could not prepare local translation: {error}") from error
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=False)
@@ -195,10 +158,10 @@ with sync_playwright() as p:
 
     back_translations = {}
     if do_translate:
-        print("Translating items to English...")
+        print("Translating items to English locally (M2M100 INT8)...")
         for lang in APP_LANGUAGES:
             print(f"  [{lang}]...", end=" ", flush=True)
-            back_translations[lang] = back_translate_batch(results[lang], lang)
+            back_translations[lang] = local_translator.translate_batch(results[lang], lang)
             print("done")
 
     # Build report
