@@ -1,0 +1,5 @@
+field_type,field_name,required,field_description,variable,min_length,max_length,default,prefix,multi_select,options_querystring
+Image,Main Image,TRUE,"JPEG, PNG, WEBP, GIF, MP4 formats, up to 30 MB",mainImage,,,,,,
+Text,Link,TRUE,,target,,,,,,
+Text,Headline,TRUE,,headline,,,,,,
+Text,Description,TRUE,,description,,,,,,

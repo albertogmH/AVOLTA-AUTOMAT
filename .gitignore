@@ -7,3 +7,4 @@ searchTermBulkImport/searchterm_import*.csv
 searchTermBulkImport/*
 storesDB/stores.db
 .env
+/topsortGeneration/

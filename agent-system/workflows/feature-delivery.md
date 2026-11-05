@@ -6,6 +6,15 @@ custom runtime or dependency installation in this template.
 
 ## 1. Choose The Route
 
+The standalone `topsort` exception in [shared instructions](../../AGENTS.md)
+precedes this table only for that agent's homepage checks, authorized local or
+captured-live What's Trending transformations into local copy/paste output, and
+explicitly requested offline generators. Live output is not CMS authoring recovery
+or a deployment; preserve rendered URLs without inventing Magento directives.
+It runs its skills and focused self-review directly, without delegation or
+coordinator assignment; this is not independent approval. All other agents and
+changes outside that narrow scope retain the routes below.
+
 | Route | When | Specialists |
 | --- | --- | --- |
 | Direct | Questions or read-only analysis | Main-session answer; no pipeline or task files |

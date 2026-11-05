@@ -35,6 +35,19 @@ or scaffold an application without a concrete project request.
 
 ## Delegation And Evidence
 
+- Standalone `topsort` is a user-requested exception to the delegation pipeline:
+  check homepage URLs/store selections, transform existing authorized local or
+  captured live What's Trending HTML into local CMS copy/paste output, and create
+  local offline generators only when requested. Live capture is not CMS authoring
+  recovery or permission to publish; retain rendered URLs without inventing Magento
+  directives and disclose source/validation limits.
+  It executes checker, implementer and one focused structural self-review itself,
+  never invokes other agents or requires an orchestrator. Self-review is not
+  independent QA/security approval; report actual checks and unresolved blockers.
+  Preserve content, sources and authorization boundaries. This exception does
+  not cover publishing, SDK/dependency changes, DB writes or other block types,
+  and does not change other agents' delivery requirements. Outside this scope,
+  stop and ask the user; do not delegate automatically.
 - Use [the delivery workflow](agent-system/workflows/feature-delivery.md) for implementation work.
 - Answer questions/read-only analysis directly, with no pipeline or task files.
   The user supplies goal/context; the coordinator manages assignments, not user forms.
