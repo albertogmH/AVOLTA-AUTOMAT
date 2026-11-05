@@ -54,6 +54,9 @@ gates override route minima; no blanket QA waiver for behavioral tasks.
 ## Integrate And Validate
 
 - Inspect actual changes, including untracked files, against the task and user baseline.
+- Invoke Tester, Security Auditor and Reviewer once, only after ALL implementation
+  for the task is finished; never after intermediate edits or sub-tasks. If one reports
+  a defect, fix it and re-run only the affected gate(s), again at the end.
 - Freeze implementation edits before QA and review. Use actual project commands and
   observed outputs; the coordinator can execute checks if a specialist cannot.
 - Minimal: require actual focused validation and coordinator final inspection;

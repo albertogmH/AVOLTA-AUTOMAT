@@ -92,6 +92,11 @@ traceability, not cryptographic attestation.
 
 ## 6. Validate Independently
 
+Run independent validation (Tester, Security Auditor, Reviewer and the full test
+suite) ONCE, at the very end, after all implementation for the task is finished
+and frozen. Never invoke these gates after intermediate edits or sub-tasks. While
+implementing, the Developer runs only the cheapest focused check on the changed code.
+
 Apply the selected route and any mandatory project/user gates:
 
 1. Run required checks after the final relevant changes and final integration checks
@@ -122,6 +127,8 @@ affected required checks after the final correction. For behavioral routes,
 refresh affected QA and final review; repeat required security review if its
 content or assumptions changed. Minimal needs a fresh affected focused check and
 coordinator inspection, plus any mandated gates. Preserve unaffected valid evidence.
+Re-run only the gates the defect touched, and only once at the end of the
+correction, never after each individual edit.
 
 Limit to two remediation cycles per task. Stop and escalate unresolved blockers,
 uncertainty or missing tools instead of repeatedly exploring or weakening gates.
@@ -151,7 +158,8 @@ Report partial or blocked delivery honestly. No automatic merge/deploy.
   permitted by the user. Escalate reasoning for genuine uncertainty, not every task.
 - Keep shared instructions short. Load a role's details when it is assigned.
 - Plan once, investigate locally and avoid duplicated repository surveys.
-- Run narrow checks while editing; reserve required full checks for integration.
+- Run only the cheapest focused check while editing; reserve the full suite and all
+  independent QA, security and review for one pass at the end of the task.
 - Reuse valid results and worker sessions when supported; send delta follow-ups.
   Refresh only affected evidence when content, environment or assumptions change.
 - No blind retries of failed tool calls, endless polling or repeated summaries.

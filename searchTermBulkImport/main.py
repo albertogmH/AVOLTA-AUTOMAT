@@ -164,7 +164,7 @@ has_redirect = True
 is_external = ask_bool("Are the URLs external?", default=False)
 localized = ask_bool("Is the slug localized (one per language)?", default=False)
 slugs = {}
-slug = ""
+division_slugs = {}
 
 # For external links the value is used as the full redirect URL, otherwise it is a path slug.
 value_label = "full URL" if is_external else "slug"
@@ -174,7 +174,8 @@ if localized:
     for lang in languages:
         slugs[lang] = input(f"Enter {value_label} for '{lang}': ").strip()
 else:
-    slug = input(f"Enter {value_label}: ").strip()
+    for division in sorted({s["division"] for s in allowed_stores}, key=int):
+        division_slugs[division] = input(f"Enter {value_label} for division {division}: ").strip()
 
 display_in_terms = ask_bool("Show terms in suggested?", default=False)
 output_name = input("Enter output file name (empty for date): ").strip()
@@ -183,7 +184,7 @@ startTime = time.time()
 
 rows_by_division = {}
 for store in allowed_stores:
-    value = slugs.get(store["language"], "") if localized else slug
+    value = slugs.get(store["language"], "") if localized else division_slugs[store["division"]]
     redirect = value if has_redirect else ""
     division_rows = rows_by_division.setdefault(store["division"], [])
     for term in terms:
