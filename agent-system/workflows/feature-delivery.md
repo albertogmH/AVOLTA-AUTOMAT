@@ -8,8 +8,12 @@ custom runtime or dependency installation in this template.
 
 The standalone `topsort` exception in [shared instructions](../../AGENTS.md)
 precedes this table only for that agent's homepage checks, authorized local or
-captured-live What's Trending transformations into local copy/paste output, and
-explicitly requested offline generators. Live output is not CMS authoring recovery
+captured-live What's Trending/MENUBANNER transformations into local copy/paste
+output, explicitly requested maintenance of those agent/skill contracts, and
+explicitly requested offline generators. MENUBANNER covers only the confirmed
+Beauty/Liquor/Accessories families, including missing-region creation under its
+contract; inventory still covers all navbar entries. Other types remain excluded.
+Live output is not CMS authoring recovery
 or a deployment; preserve rendered URLs without inventing Magento directives.
 It runs its skills and focused self-review directly, without delegation or
 coordinator assignment; this is not independent approval. All other agents and

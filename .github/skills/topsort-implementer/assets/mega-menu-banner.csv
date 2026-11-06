@@ -1,0 +1,8 @@
+field_type,field_name,required,field_description,variable,min_length,max_length,default,prefix,multi_select,options_querystring
+Text,Headline,TRUE,,headline,,,,,,
+Text,CTA text,TRUE,,ctaText,,,,,,
+Text,Image  alt text,FALSE,,altText,,,,,,
+Image,Main image,TRUE,"JPEG, PNG, WEBP, GIF, MP4 formats, up to 30 MB",mainImage,,,,,,
+Image,Mobile image,TRUE,"JPEG, PNG, WEBP, GIF, MP4 formats, up to 30 MB",mobileImage,,,,,,
+Text,Link,TRUE,,target,,,,,,
+Text,CTA text accessibility,FALSE,CTA Aria label for screen readers,ctaAriaLabel,,,,,,

@@ -1,6 +1,6 @@
 ---
 name: topsort
-description: "Usar con URLs o tiendas para comprobar y transformar Topsort What's Trending de homepage, o crear bajo peticion un generador local de HTML por lote; checker, implementer y revision propia sin otros agentes."
+description: "Usar con URLs o tiendas para comprobar y transformar Topsort TRENDING y MENUBANNER de homepage, o crear bajo peticion un generador local de HTML por lote; checker, implementer y revision propia sin otros agentes."
 target: github-copilot
 user-invocable: true
 agents: []
@@ -22,6 +22,10 @@ tambien puede cargar estas skills.
 - Acepta URLs de homepage o tiendas/destinos, websites, codigos de store o IATA.
   Resuelve nombres contra `storesDB/stores.db` en solo lectura, no dominios
   inventados. Todas las homes incluye cada store e idioma de la seleccion.
+- Si no indica componente, preguntar antes de comprobar o implementar:
+  "Que componente quieres: TRENDING o MENUBANNER (MEGAMENU)?". No asumir tipo
+  ni comprobar ambos por defecto. MEGAMENU/mega menu es alias de MENUBANNER;
+  TRENDING/What's Trending es `whats-trending`. Si ya lo especifica, no repetir.
 - "Comprueba todas las homes de Hong Kong": resolver URLs y ejecutar solo check.
 - "Implementa What's Trending para todas las homes de Hong Kong": check primero
   y conversion del HTML local o live autorizado segun implementer, no publicacion.
@@ -42,15 +46,22 @@ tambien puede cargar estas skills.
   Consulta directa de solo lectura, sin pipeline ni archivos de tareas.
 - Convertir o reparar: carga [topsort-implementer](../skills/topsort-implementer/SKILL.md),
   ejecuta tu mismo el checker, transforma y realiza su revision minima propia.
-- Implementacion por lote: si un store ya tiene tags Topsort en el bloque,
-  omitirlo y avisar por chat; no reimplementar ni reparar automaticamente. Solo
-  convertir los stores sin Topsort; reparacion requiere peticion explicita.
+- Implementacion por lote: omitir cada bloque/categoria que ya tenga tags Topsort,
+  incluso parciales; no reimplementar ni reparar automaticamente. TRENDING decide
+  por bloque; MENUBANNER por categoria, continuando con las demas. Home con todos
+  sus banners elegibles implementados: omitirla y anotarla en reporte general.
+  Reparacion requiere peticion explicita; tags de otro tipo no omiten este tipo.
 - Crear script/generar archivos: usa la modalidad del mismo implementer solo
   cuando se solicite. No crees otro agente, runtime de orquestacion ni servicio.
 - No requieras coordinador, asignacion, handoff o review de otro agente. Alcance
   incierto: propuesta dry-run. Datos/fuente/permisos faltantes: informar bloqueo.
 
-Actualmente ambas skills admiten solo `whats-trending`. Para otros tipos,
+Ambas skills admiten `whats-trending` (`TRENDING`) y `MENUBANNER`. Para menus,
+carga el [contrato MENUBANNER](../skills/topsort-implementer/references/menu-banner.md):
+inventariar todas las entradas, implementar solo Beauty/Liquor/Accessories,
+incluida region ausente confirmada; tres slots 1,2,3, fallbacks al final y sin
+atributos cliente ni mirror generado. No aplicar CSS/Swiper de Trending.
+Para otros tipos,
 responde UNSUPPORTED y solicita skill/contrato documentado; no detectes,
 implementes ni adivines IDs, atributos o mappings.
 
@@ -84,7 +95,7 @@ Solo nombres reservados; no implican soporte ni comparten automaticamente schema
 - PLP in-line banner.
 - PLP hero banner.
 - PDP marketing banner.
-- Mega menu banner.
+- Mega menu banner: soportado como `MENUBANNER`, no tipo reservado.
 - Sponsored Products: no es banner carousel; no aplicar contrato What's Trending.
 
 ## Entrega
@@ -138,10 +149,38 @@ Si BLOCKED, explica el motivo sin inventar codigo listo ni enlaces rotos.
 Conserva fuente y limites como evidencia interna; no agregarlos como boilerplate.
 El reporte contiene solo encabezado nombre/ID/URL, estado esencial, enlace y
 codigo; sin viewport, formato de fecha, ruta, comandos, tests ni boilerplate de
-fuente/limites. Descripcion dinamica vacia es valida, no pendiente. Incluir al
-final de cada HTML el CSS autorizado del contrato, una sola vez. Conservar
+fuente/limites. Tras el encabezado de cada store, mostrar dos lineas:
+`<u>Idioma:</u> [IDIOMA EN MAYUSCULAS]<br>` y, en la siguiente linea,
+`<u>Resumen:</u> [resumen corto]`. Subrayar solo las etiquetas y usar `<br>`
+para conservar el salto en Markdown. El resumen incluye estado, incidencias
+concretas o ausencia de incidencias detectadas, y conversion/omision/bloqueo.
+MENUBANNER resume las familias presentes
+y las ausencias o ranks pendientes; no basta con decir "ya etiquetadas".
+Descripcion dinamica vacia con `description:textContent` es valida, no pendiente:
+Topsort rellena esa variable. No confundir falta de texto con falta del atributo
+`data-ts-field="description:textContent"`; solo esta ultima, verificada en el
+slot, es una incidencia de binding y se describe explicitamente como tal.
+Incluir al
+final de cada HTML TRENDING el CSS autorizado del contrato, una sola vez; nunca
+copiarlo a MENUBANNER. Conservar
 advertencias reales de estructura o identidad. Ya tiene Topsort: "Topsort ya ha sido implementado en esta tienda",
 sin HTML nuevo; bloque ausente: "No se ha encontrado el bloque". Ambos se
 registran por Store ID en el MD del grupo y en resumen raiz, y se avisan por chat.
 Enlace con `target="_blank" rel="noopener noreferrer"` cuando el visor admita HTML;
 VS Code puede ignorar `target`, por lo que no se garantiza otra pestana.
+
+Todos los componentes actuales y futuros siguen la estructura TRENDING:
+un `report.md` en la carpeta padre `TIPO-store/` y solo HTML dentro de las
+subcarpetas de idiomas, enlazados directamente desde ese reporte. No crear MD
+por store/idioma ni reportes intermedios dentro de esas subcarpetas.
+Para MENUBANNER, el reporte padre contiene secciones por store/idioma con TODAS
+las entradas del navbar en orden, nombre y Category ID; codigo/enlace solo para
+categorias convertidas. HTML por categoria en `[idioma]/`:
+`[CATEGORIA]-store-[IDs]-[idioma].html`, con prefijos `BEAUTY`, `LIQUOR` o
+`ACCESSORIES`; ejemplo `BEAUTY-store-196_198-en.html`. Category ID permanece
+en reporte y comentario, no en el nombre del archivo. No cambiar IDs Topsort.
+Conservar estados de omitidas en el reporte padre y resumen general; una home
+mixta no se declara totalmente implementada. Compartir HTML solo tras comparar
+tambien categoria, CTA, imagen mobile y estructura completa; nunca mezclar
+categorias. En chat, mismos contenidos sin archivos. El mantenimiento de estas
+personalizaciones no es una nueva ejecucion de tiendas ni requiere MD/chat.

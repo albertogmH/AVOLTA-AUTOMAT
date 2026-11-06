@@ -37,8 +37,12 @@ or scaffold an application without a concrete project request.
 
 - Standalone `topsort` is a user-requested exception to the delegation pipeline:
   check homepage URLs/store selections, transform existing authorized local or
-  captured live What's Trending HTML into local CMS copy/paste output, and create
-  local offline generators only when requested. Live capture is not CMS authoring
+  captured live What's Trending or MENUBANNER HTML into local CMS copy/paste output,
+  maintain their agent/skill contracts as explicitly requested, and create local
+  offline generators only when requested. MENUBANNER inventories all navbar entries
+  but transforms only confirmed Beauty/Liquor/Accessories; confirmed missing regions
+  in those families may get three no-fallback slots under its contract.
+  Live capture is not CMS authoring
   recovery or permission to publish; retain rendered URLs without inventing Magento
   directives and disclose source/validation limits.
   It executes checker, implementer and one focused structural self-review itself,

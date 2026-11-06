@@ -1,6 +1,7 @@
 # Contrato What's Trending
 
-Unico tipo soportado: `whats-trending`, banner de contenido homepage.
+Tipo de este contrato: `whats-trending` (`TRENDING`), contenido homepage.
+MENUBANNER tiene contrato separado; no reutiliza este Swiper, campos ni CSS.
 Contrato estatico suministrado por usuario, no especificacion de auction/SDK.
 
 ## Identidad Del Bloque
@@ -73,7 +74,10 @@ vacio: no marcar descripcion pendiente, HTML parcial o BLOCKED por eso. Validar
 que el nodo, la variable y la propiedad existan, no que haya texto estatico.
 `required TRUE` del CSV define campos del template creativo en Topsort, no exige
 defaults no vacios en el HTML CMS. Conservar defaults de fuente si existen;
-no inventar copy ni reemplazar imagenes/links por el ejemplo Prada. Tags fuera
+Topsort rellena la variable; no confundir texto vacio con ausencia del atributo
+`data-ts-field="description:textContent"`. Solo si falta ese atributo en el
+slot se informa un binding ausente, indicando el atributo exacto, no contenido
+pendiente. No inventar copy ni reemplazar imagenes/links por el ejemplo Prada. Tags fuera
 del bloque, en scripts o clases no cuentan. Validez exige estructura, atributos,
 mappings presentes y sin nesting/slots/bindings duplicados; no prueba
 runtime. Implementacion de lote: tags reales presentes, TOPSORT_PARTIAL o

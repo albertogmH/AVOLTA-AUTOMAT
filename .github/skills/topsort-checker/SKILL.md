@@ -1,14 +1,19 @@
 ---
 name: topsort-checker
-description: "Usar con URLs o tiendas/destinos para resolver todas sus homes e idiomas desde la base de stores y comprobar What's Trending, tags Topsort, slots, ranks y bindings en solo lectura."
+description: "Usar con URLs o tiendas/destinos para resolver sus homes e idiomas y comprobar Topsort TRENDING o MENUBANNER, todas las categorias del navbar, tags, slots, ranks y bindings en solo lectura."
 ---
 
 # Topsort Checker
 
-Dispatcher reutilizable; hoy solo `whats-trending`. Otros tipos: UNSUPPORTED,
-solicitar contrato sin intentar deteccion. Lee el
-[contrato compartido](./../topsort-implementer/references/whats-trending.md)
-antes de clasificar. Consulta directa, sin pipeline ni delegacion.
+Dispatcher reutilizable: `whats-trending` (`TRENDING`) y `MENUBANNER`.
+Otros tipos: UNSUPPORTED, solicitar contrato sin intentar deteccion. Lee el
+[contrato Trending](./../topsort-implementer/references/whats-trending.md) o el
+[contrato MENUBANNER](./../topsort-implementer/references/menu-banner.md)
+segun el tipo antes de clasificar. Si falta el tipo, preguntar "Que componente
+quieres: TRENDING o MENUBANNER (MEGAMENU)?" antes de comprobar/implementar;
+no asumir ni comprobar ambos. MEGAMENU/mega menu es alias de MENUBANNER,
+TRENDING/What's Trending es `whats-trending`. No repetir si ya esta indicado.
+Consulta directa, sin pipeline ni delegacion.
 
 ## Resolver URLs O Tiendas
 
@@ -84,6 +89,16 @@ de la DB actual, no de un numero fijo del reporte historico.
 
 ## Inspeccion
 
+Las reglas de titulo/Swiper, cuatro bindings y CSS siguientes son SOLO TRENDING.
+Para MENUBANNER usar su contrato: todas las entradas principales del navbar,
+nombre por span/button y Category ID por wrapper/aria-controls. Inventariar
+incluso entradas sin banners o fuera de Beauty/Liquor/Accessories; no confundir
+copias mobile/desktop o mirror con originales. Comprobar por categoria tres
+slots, ranks 1,2,3, nofallback segun originales, siete variables con mappings
+multiples y widgets URL-only. Un mirror cliente no invalida por si mismo autoria;
+no exigir location/language del runtime ni generar mirror en la salida.
+Fuentes/variantes ambiguas: bloquear categoria, no asumir cero banners.
+
 - Inventaria todos los candidatos, tambien variantes hidden desktop/mobile.
   Usa titulo + Swiper del contrato, no `.trending-brands` sola. Excluye Most
   popular/Lo mas popular. Titulos vacios o multiples candidatos sin seleccion
@@ -102,7 +117,11 @@ de la DB actual, no de un numero fijo del reporte historico.
   binding duplicado/erroneo y colision real de IDs. No repares en este skill.
 - `description:textContent` en span vacio es un destino dinamico valido. No
    exigir texto por `required TRUE` del CSV creativo ni clasificar como parcial
-   por ese motivo. Comprobar el CSS final autorizado en codigo generado, sin
+   por ese motivo. Topsort rellena la variable: la ausencia de texto no es una
+   incidencia. Distinguirla de la ausencia verificada del atributo
+   `data-ts-field="description:textContent"` en el slot; en ese caso el aviso
+   dice "falta el atributo de binding", nunca solo "falta description".
+   Comprobar el CSS final autorizado en codigo generado, sin
    confundir validez estatica con carga efectiva del SDK.
 - Presencia del bloque != tags presentes != estructura completa != runtime
   funcionando. El chequeo estructural no prueba auction/SDK.
@@ -121,9 +140,12 @@ de la DB actual, no de un numero fijo del reporte historico.
 Puede anotarse presencia de un candidato aun si no se puede clasificar su
 estructura. No conviertas incertidumbre en ausencia o validez global.
 Para implementar: tags Topsort reales dentro del bloque, completos o parciales,
-implican SKIPPED_ALREADY_TOPSORT por store, salvo reparacion expresamente pedida.
+implican SKIPPED_ALREADY_TOPSORT por bloque/categoria, salvo reparacion pedida.
 No usar tags de otras secciones para omitir este bloque. Registrar omitidas y
 ausentes, sin transformar automaticamente por detectar una estructura parcial.
+MENUBANNER: continuar con categorias pendientes; home ya implementada solo si
+todas las elegibles tienen Topsort. Ausencia de region confirmada en una familia
+elegible permite creacion SOLO al implementar; check sigue sin generar codigo.
 
 ## Salida
 
@@ -145,7 +167,15 @@ y resumen raiz solo si se solicitan expresamente.
 La eleccion solo vale para el pedido actual; no altera permisos de conversion.
 
 Resumen con tipo, estado por candidato, errores y limitaciones. Seccion por store
-con nombre/ID/URL y estado breve. Mantener URL final, evidencia, timestamp y
+con nombre/ID/URL y estado breve. Tras el encabezado, mostrar dos lineas:
+`<u>Idioma:</u> [IDIOMA EN MAYUSCULAS]<br>` y, en la siguiente linea,
+`<u>Resumen:</u> [resumen corto]`. Subrayar solo las etiquetas; `<br>` conserva
+el salto en Markdown. El resumen permite ver estado, incidencias concretas o
+"sin incidencias detectadas", y conversion/omision/bloqueo sin leer el detalle.
+MENUBANNER resume familias presentes, ranks pendientes y entradas ausentes;
+una familia sin entrada/Category ID confirmado no es una region lista para crear.
+No resumir solo "categorias ya etiquetadas" si hay advertencias.
+Mantener URL final, evidencia, timestamp y
 viewport en el contexto del chequeo, no volcar datos tecnicos en el reporte
 salvo que el usuario los solicite. Sin seccion "Fuente Y Limites", formato/ruta,
 comandos ni lists de tests. Preservar advertencias esenciales, no falsificar validez.
@@ -169,3 +199,15 @@ Ya tiene tags: "Topsort ya ha sido implementado en esta tienda" y sin cambios;
 si parcial, agregar "Estructura incompleta; sin cambios". Ausente: "No se ha
 encontrado el bloque". En lotes MD, registrar por Store ID en reporte del grupo
 y `topsortGeneration/[fecha]/report.md`, y avisar brevemente por chat.
+
+MENUBANNER: una seccion por home/store/idioma, con TODAS las entradas del navbar
+en orden y nombre/Category ID/estado, tambien las no elegibles o sin region.
+Solo check: sin HTML. En implementacion, conservar decisiones por categoria del
+implementer; no decir que toda la tienda tiene Topsort porque una categoria lo
+tenga. Secciones por store/idioma en el unico `report.md` del grupo, enlazando
+directamente los HTML por categoria en carpetas de idioma; no MD intermedios.
+Todos los componentes actuales y futuros siguen esa estructura TRENDING:
+carpetas de idiomas solo con HTML, reporte en la carpeta padre.
+El resumen raiz incluye omisiones por categoria
+y homes totalmente implementadas. Esta adaptacion no cambia TRENDING.
+Editar estas personalizaciones no es ejecutar un lote y no requiere MD/chat.

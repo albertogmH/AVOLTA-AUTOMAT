@@ -1,14 +1,25 @@
 ---
 name: topsort-implementer
-description: "Usar para convertir Topsort What's Trending desde URLs o tiendas, o crear bajo peticion un script local que genere HTML por lote listo para copiar y pegar, preservando contenido e idempotencia."
+description: "Usar para implementar Topsort TRENDING o MENUBANNER desde URLs o tiendas, con HTML CMS por categoria de menu o carrusel, o crear bajo peticion un generador local por lote preservando contenido e idempotencia."
 ---
 
 # Topsort Implementer
 
-Dispatcher reutilizable; solo `whats-trending` esta soportado. Lee el
-[contrato compartido](./references/whats-trending.md) y ejecuta primero
+Dispatcher reutilizable: `whats-trending` (`TRENDING`) y `MENUBANNER`. Lee el
+[contrato Trending](./references/whats-trending.md) o el
+[contrato MENUBANNER](./references/menu-banner.md) segun el tipo y ejecuta primero
 [topsort-checker](./../topsort-checker/SKILL.md) como procedimiento en la misma
 sesion, no subagente. Conserva su evidencia y limitaciones.
+
+Sin componente indicado, preguntar TRENDING o MENUBANNER (MEGAMENU) antes de
+ejecutar; nunca asumir ni implementar ambos. MEGAMENU/mega menu es MENUBANNER.
+Una seleccion explicita ya resuelve esta pregunta, no volver a pedirla.
+
+Las reglas de Swiper/slides, ID whats-trending, cuatro bindings y CSS final de
+Conversion Local/Revision Minima son SOLO TRENDING. MENUBANNER usa su contrato
+para detectar, transformar y validar: tres slots fijos, siete variables,
+decision por categoria, sin mirror/atributos cliente ni CSS de Trending.
+Ambos reutilizan adquisicion segura, preservacion, formato y limites comunes.
 
 ## Autorizacion Y Decision
 
@@ -21,12 +32,17 @@ bajo su propio workflow; la excepcion no se extiende a otros agentes.
 - Confirma HTML local o captura live de URL autorizada, candidato,
   alcance de edicion y defaults. Si alcance de edicion/publicacion es incierto,
   solo dry-run/diff propuesto, nunca una autorizacion implicita de publicar.
-- ABSENT: no crear bloque automaticamente. AMBIGUOUS o ERROR/BLOCKED: detener
+- ABSENT: no crear TRENDING automaticamente. MENUBANNER permite crear tres slots
+  sin fallback en Beauty/Liquor/Accessories sin region, solo con inventario
+  suficiente y familia confirmada; otras entradas no se convierten.
+  AMBIGUOUS o ERROR/BLOCKED: detener
   edicion y pedir fuente/seleccion/permisos. PRESENT_NO_TOPSORT: convertir
   unicamente el candidato presente autorizado. Si ya hay tags Topsort reales
   en el bloque, TOPSORT_VALID o TOPSORT_PARTIAL: SKIPPED_ALREADY_TOPSORT, sin
   transformar ni generar otro HTML. Reparacion solo ante peticion explicita,
-  separada de implementar las tiendas que aun no tienen Topsort.
+  separada de implementar las tiendas que aun no tienen Topsort. MENUBANNER decide
+  por categoria: omitir una no omite las otras; home con todas las elegibles
+  implementadas se omite y se anota en reporte general, igual que TRENDING.
 - Los elementos con `data-ts-field` son destinos dinamicos. Descripcion vacia
   con `description:textContent` es valida: crear el span si falta, sin inventar
   texto y sin marcar pendiente/parcial. `required TRUE` del template creativo no
@@ -52,7 +68,7 @@ bajo su propio workflow; la excepcion no se extiende a otros agentes.
     export CMS cuando la captura live permite identificar cards y contenido.
     Captura insuficiente/ambigua: NEEDS_INPUT/BLOCKED. No inventes directivas
     Magento ni defaults; una tabla historica de cards no sustituye la captura.
-  - Decide por Store ID/idioma, no por hostname completo: en un grupo con dos
+  - Decide por Store ID/idioma y bloque/categoria, no por hostname: en un grupo con dos
     stores con Topsort y dos sin el, convierte solo los dos sin tags. Avisar las
     omisiones por chat y registrarlas en los reportes, sin generar HTML para ellas.
   - Crear archivos requiere que el usuario los pida expresamente, o pida un script
@@ -64,6 +80,11 @@ bajo su propio workflow; la excepcion no se extiende a otros agentes.
     casos NO_OP por URL en el reporte, sin ocultarlos del lote.
 
   ## Comparacion Previa Y Archivo Comun
+
+  Para MENUBANNER comparar por categoria confirmada (familia y Category ID),
+  incluyendo CTA, aria-label, mobile/desktop, todos los links y tres slots;
+  HTML comun por categoria, nunca combinar categorias distintas ni omitir la
+  seccion de cada store/idioma del reporte padre. Nombre y entrega en su contrato.
 
   Antes de crear cualquier HTML, compara todas las paginas elegibles del mismo
   tipo, hostname e idioma resueltas por checker. No agrupar idiomas distintos ni
@@ -161,6 +182,10 @@ bajo su propio workflow; la excepcion no se extiende a otros agentes.
 
 ## Conversion Local
 
+Para MENUBANNER seguir exclusivamente HTML De Autoria, Ranks Y Fallbacks y
+Magento Y Fuentes de su contrato; las subsecciones siguientes son TRENDING.
+Reglas comunes de seguridad/preservacion siguen vigentes para ambos tipos.
+
 ### Captura Live Autorizada
 
 La peticion de implementar una URL permite leer el bloque live y generar HTML
@@ -229,7 +254,8 @@ Una revision por fuente transformada, contra la documentacion:
   Builder y otras variantes conservados, salvo el CSS final expresamente pedido;
   stylesheet canonico unico, al final; resultado valido e idempotente NO_OP.
 
-CSV de template: validar header, once columnas, cuatro required TRUE y variables
+CSV de template: validar header, once columnas y variables del tipo: TRENDING
+cuatro required TRUE; MENUBANNER siete campos, cinco TRUE y dos FALSE. Validar
 si se cambia/entrega; no confundir con manifest ni creative import. Reparar un
 defecto local y repetir solo el check afectado; no fingir ejecuciones. Screenshots
 o pruebas visuales solo cuando se solicitan o se afecta layout, no como pipeline
@@ -265,7 +291,13 @@ workspace. Una ejecucion usa `topsortGeneration/[fecha]/`; dentro, una carpeta
 por cada combinacion tipo/hostname: `[TIPO]-[store name]/`, con `report.md` y sus
 HTML separados en subcarpetas de idioma. No mezclar tiendas ni tipos. Chat no crea archivos.
 
-- What's Trending usa `TRENDING`. Al declarar un tipo nuevo, pregunta que nombre
+Estructura TRENDING obligatoria para todos los componentes actuales y futuros:
+unico `report.md` en la carpeta padre de tipo/hostname, con secciones por
+store/idioma y enlaces directos a los HTML. Dentro de las carpetas de idiomas,
+solo HTML; no crear MD por store/idioma ni reportes intermedios. El resumen de
+la ejecucion permanece en la raiz, sin sustituir el reporte de cada grupo.
+
+- What's Trending usa `TRENDING`; mega menu usa `MENUBANNER`. Al declarar otro tipo, pregunta que nombre
   en mayusculas quiere el usuario y guardalo en su contrato antes de generar;
   un nombre de carpeta no habilita tipos que siguen UNSUPPORTED.
 - `store name` procede del hostname real de la URL con un parser, tomando el
@@ -291,6 +323,14 @@ HTML separados en subcarpetas de idioma. No mezclar tiendas ni tipos. Chat no cr
   enlazando a las subcarpetas; no duplicarlo por idioma salvo peticion expresa.
   No sobrescribir salidas sin permiso; al reorganizar, preservar bytes de los HTML
   y actualizar solo los enlaces, sin regenerar contenidos ni eliminar ediciones.
+- MENUBANNER usa el mismo `report.md` padre, con secciones por store/idioma y
+  todas sus categorias. En `[idioma]/`, HTML
+  `[CATEGORIA]-store-[IDs]-[idioma].html` solo por categoria convertida, con
+  prefijos `BEAUTY`, `LIQUOR` o `ACCESSORIES`, por ejemplo
+  `BEAUTY-store-196_198-en.html`. Mantener Category ID en comentario y reporte;
+  no cambiar IDs Topsort. Validar colisiones antes de renombrar o crear archivos.
+  El reporte padre incluye codigo completo y enlace directo de cada categoria,
+  segun contrato MENUBANNER; no crear MD dentro de las carpetas de idiomas.
 - Resumen `topsortGeneration/[fecha]/report.md`: todas las homes no transformadas,
   incluidas ya implementadas, bloque ausente, tipo no soportado, ambiguas o fallidas.
   Incluir tambien defectos estructurales reales pendientes, sin llamarlos omitidos
@@ -299,7 +339,18 @@ HTML separados en subcarpetas de idioma. No mezclar tiendas ni tipos. Chat no cr
   hay omisiones, indicar solo "Sin tiendas omitidas". Este resumen forma parte de
   la entrega MD autorizada, no implica crear manifests JSON/CSV.
 
+En MENUBANNER, incluir tambien categorias omitidas en homes mixtas (Store ID,
+Category ID y motivo); no etiquetar la home como totalmente implementada si
+quedan categorias elegibles pendientes. Ausencia elegible con creacion validada
+no es omision. TRENDING mantiene su formato y su regla de no crear ausentes.
+
 ## Entrega MD Con HTML
+
+Para MENUBANNER prevalece Entrega Por Store E Idioma de su contrato: secciones
+en el reporte padre con todas las categorias, HTML por categoria convertida y enlaces
+coherentes. Las reglas siguientes de metadatos, codigo completo, no tablas,
+omite-tags y resumen son comunes; excepcion a ABSENT solo para familias de menu
+elegibles confirmadas. TRENDING conserva las rutas y entrega actuales.
 
 Elegir MD autoriza reportes por tipo/store, HTML por grupo equivalente transformado y
 resumen raiz de omisiones. Chat: enlaces y avisos breves de stores omitidos, sin
@@ -313,6 +364,18 @@ website ID, comandos, listas de tests ni una seccion "Fuente Y Limites". Mantene
 evidencia en contexto/checks, no volcarla como boilerplate. Advertencias relevantes
 de estructura o identidad de contenido se mantienen; no inventar una advertencia
 de descripcion pendiente por un span dinamico vacio valido.
+
+Tras el encabezado de cada store, mostrar dos lineas:
+`<u>Idioma:</u> [IDIOMA EN MAYUSCULAS]<br>` y, en la siguiente linea,
+`<u>Resumen:</u> [resumen corto]`. Subrayar solo las etiquetas; `<br>` conserva
+el salto en Markdown. El resumen incluye estado, incidencias concretas o
+"sin incidencias detectadas", y conversion/omision/bloqueo. Aplicar tambien
+al resumen raiz. Para MENUBANNER, indicar familias presentes y ausentes
+y ranks pendientes; "ya etiquetadas" no sustituye el resumen de incidencias.
+La variable `description:textContent` puede tener texto vacio porque Topsort la
+rellena. Solo la ausencia verificada del atributo
+`data-ts-field="description:textContent"` se reporta como binding ausente, no
+como descripcion vacia o contenido pendiente.
 
 1. Cada HTML empieza con comentario de metadatos de TODOS sus store views y
   debajo el fragmento completo, individual o comun. Ejemplo de formato de lista
@@ -365,3 +428,6 @@ No sustituir el codigo por el enlace.
 Solo estados y advertencias esenciales fuera del codigo; no una seccion tecnica
 de fuente/limites. BLOCKED: motivo y datos necesarios, sin codigo ficticio listo. Manifest puede seguir
 estructurado, pero la respuesta al usuario no sera una tabla de implementacion.
+
+El mantenimiento de estas personalizaciones no ejecuta tiendas ni requiere la
+confirmacion MD/chat; no generar lotes ni tocar salidas previas por ese motivo.
