@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import time
 from playwright.sync_api import sync_playwright
 from utils.config import APP_CREDENTIALS, APP_PROD_URL, APP_STAGING_URL, APP_PROD_HOMEID, APP_STAGING_HOMEID, APP_DEFAULT_LANGUAGE, APP_LANGUAGES
+from utils.functions import launch_browser, log
 from local_translation import LocalTranslator
 
 ENVIRONMENTS = {
@@ -26,7 +27,7 @@ ENVIRONMENTS = {
 
 def login_umbraco(page, environment):
     target = ENVIRONMENTS[environment]
-    print(f"Navigating to {environment}: {target['url']}")
+    log(f"Navigating to {environment}: {target['url']}")
     page.goto(target["url"], wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle")
 
@@ -35,13 +36,13 @@ def login_umbraco(page, environment):
     try:
         email_input.wait_for(state="visible", timeout=15000)
     except Exception:
-        print("Email field not found, continuing...")
+        log("Email field not found, continuing...")
         return target
 
     password_input = page.locator("input#password")
     sign_in_button = page.locator("button#next")
 
-    print("Filling in credentials...")
+    log("Filling in credentials...")
     email_input.fill(APP_CREDENTIALS["username"])
     password_input.fill(APP_CREDENTIALS["password"])
     sign_in_button.click()
@@ -49,9 +50,9 @@ def login_umbraco(page, environment):
     # Wait for login to complete
     try:
         page.wait_for_url("**/umbraco#/**", timeout=30000)
-        print("Login completed successfully")
+        log("Login completed successfully")
     except Exception:
-        print("Waiting for page to load...")
+        log("Waiting for page to load...")
         page.wait_for_load_state("networkidle")
 
     return target
@@ -114,7 +115,7 @@ def extract_cta_banner_items(page, verbose=True):
         return items
 
     except Exception as e:
-        print(f"Error extracting items: {str(e)}")
+        log(f"Error extracting items: {str(e)}")
         return []
 
 # Request all inputs upfront
@@ -134,31 +135,31 @@ if do_translate:
         raise SystemExit(f"Could not prepare local translation: {error}") from error
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
-    page = browser.new_page()
+    browser, context_options = launch_browser(p)
+    page = browser.new_context(**context_options).new_page()
 
     target_info = login_umbraco(page, environment)
-    print(f"Logged in to {environment} | HOME_ID: {target_info['home_id']}")
+    log(f"Logged in to {environment} | HOME_ID: {target_info['home_id']}")
 
     base_url = f"{target_info['url']}/content/edit/{target_info['home_id']}"
 
     # Extract default language
-    print(f"\n--- Extracting default language ({APP_DEFAULT_LANGUAGE}) ---")
+    log(f"Extracting default language ({APP_DEFAULT_LANGUAGE})...")
     page.goto(f"{base_url}?mculture={APP_DEFAULT_LANGUAGE}", wait_until="domcontentloaded")
     default_items = extract_cta_banner_items(page, verbose=True)
-    print(f"Total items in default ({APP_DEFAULT_LANGUAGE}): {len(default_items)}")
+    log(f"Total items in default ({APP_DEFAULT_LANGUAGE}): {len(default_items)}")
 
     # Extract all other languages
     results = {}
-    for lang in APP_LANGUAGES:
-        print(f"\n[{lang}] Extracting...")
+    for index, lang in enumerate(APP_LANGUAGES, 1):
+        log(f"[{lang}] Extracting ({index}/{len(APP_LANGUAGES)})...")
         page.goto(f"{base_url}?mculture={APP_DEFAULT_LANGUAGE}&cculture={lang}", wait_until="domcontentloaded")
         results[lang] = extract_cta_banner_items(page, verbose=False)
-        print(f"[{lang}] {len(results[lang])} items found")
+        log(f"[{lang}] {len(results[lang])} items found")
 
     back_translations = {}
     if do_translate:
-        print("Translating items to English locally (M2M100 INT8)...")
+        log("Translating items to English locally (M2M100 INT8)...")
         for lang in APP_LANGUAGES:
             print(f"  [{lang}]...", end=" ", flush=True)
             back_translations[lang] = local_translator.translate_batch(results[lang], lang)
@@ -227,4 +228,4 @@ with sync_playwright() as p:
     browser.close()
 
 elapsed = time.time() - startTime
-print(f"Task completed in: {elapsed:.2f} seconds")
+log(f"Task completed in: {elapsed:.2f} seconds")

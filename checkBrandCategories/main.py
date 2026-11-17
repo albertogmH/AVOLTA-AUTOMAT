@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import time
 from playwright.sync_api import sync_playwright
 from utils.config import MAGENTO_CREDENTIALS, DIVISIONS, DIVISIONS_URL, MAGENTO_BRANDS_URL, MAGENTO_CATEGORIES_URL, MAGENTO_COLLECTIONS_URL
-from utils.functions import login_magento_admin
+from utils.functions import launch_browser, log, login_magento_admin
 
 
 def parse_divisions(raw):
@@ -132,22 +132,27 @@ collection_results = {}
 errors = {}
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
+    browser, context_options = launch_browser(p)
 
-    for division in selected_divisions:
-        page = browser.new_page()
+    for index, division in enumerate(selected_divisions, 1):
+        log(f"{division.upper()} ({index}/{len(selected_divisions)}) - starting")
+        page = browser.new_context(**context_options).new_page()
         try:
             credentials = MAGENTO_CREDENTIALS[division]
             admin_url = f"{DIVISIONS_URL[division]}dashboard"
+            log(f"{division.upper()} - logging in to Magento admin...")
             success = login_magento_admin(page, admin_url, credentials["username"], credentials["password"])
             login_results[division] = success
+            log(f"{division.upper()} - login {'OK' if success else 'FAILED'}")
 
             if success:
+                log(f"{division.upper()} - searching brand '{brand_uri}'...")
                 brand = search_brand(page, DIVISIONS_URL[division], brand_uri)
                 brand_results[division] = brand
 
                 if brand:
                     brand_id = brand.get("ID", "")
+                    log(f"{division.upper()} - brand found (ID {brand_id}); reading categories...")
 
                     try:
                         category_results[division] = get_brand_items(
@@ -157,6 +162,7 @@ with sync_playwright() as p:
                         category_results[division] = []
                         print(f"{division}: categories error - {e}")
 
+                    log(f"{division.upper()} - reading collections...")
                     try:
                         collection_results[division] = get_brand_items(
                             page, DIVISIONS_URL[division], MAGENTO_COLLECTIONS_URL, brand_id, featured_key="Is Featured"
@@ -164,12 +170,14 @@ with sync_playwright() as p:
                     except Exception as e:
                         collection_results[division] = []
                         print(f"{division}: collections error - {e}")
+                else:
+                    log(f"{division.upper()} - no brand found with URI '{brand_uri}'")
         except Exception as e:
             login_results.setdefault(division, False)
             errors[division] = str(e)
             print(f"{division}: error - {e}")
         finally:
-            page.close()
+            page.context.close()
 
     browser.close()
 
@@ -212,4 +220,4 @@ for division in selected_divisions:
         print(f"    ID: {item['ID']} - {item['Name']}{suffix}")
 
 elapsed = time.time() - startTime
-print(f"\nTask done in: {elapsed:.2f} seconds")
+log(f"Task done in: {elapsed:.2f} seconds")

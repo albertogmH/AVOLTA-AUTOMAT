@@ -1,7 +1,6 @@
 """Check or update category status, name and menu inclusion per store view."""
 
 import json
-import os
 import re
 import sys
 import time
@@ -16,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from playwright.sync_api import sync_playwright
 from utils import config as default_config
-from utils.functions import login_magento_admin
+from utils.functions import launch_browser, log, login_magento_admin
 
 STOREVIEW_SELECTOR = ".store-switcher ul.dropdown-menu li.store-switcher-store-view a[data-value]"
 ERROR_SELECTOR = ".message-error, [data-ui-id='messages-message-error']"
@@ -238,15 +237,6 @@ def print_rename_plan(category_id, division, plan):
     print(f"Intended changes for category {category_id} ({division_label(division)}):")
     for item in plan:
         print(f"{item.store_id} - {item.name} -> {json.dumps(item.title, ensure_ascii=False)}")
-
-
-def log(message):
-    print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
-
-
-def show_browser():
-    # Headless by default so no window steals focus; set MAGENTO_SHOW_BROWSER=1 to watch/debug.
-    return os.environ.get("MAGENTO_SHOW_BROWSER", "").strip().lower() in ("1", "true", "yes")
 
 
 def wait_for_category_form(page, timeout=FORM_WAIT_MS, writable=True):
@@ -611,15 +601,7 @@ def main(default_action=None, config=None):
                 print("No changes requested; browser/login skipped.")
                 return 0
         with sync_playwright() as playwright:
-            headless = not show_browser()
-            log("Starting browser" + (" (headless)." if headless else "."))
-            browser = playwright.chromium.launch(headless=headless, channel="chromium" if headless else None)
-            user_agent = None
-            if headless:
-                # The site's WAF returns 403 to "HeadlessChrome" user agents.
-                probe = browser.new_context()
-                user_agent = probe.new_page().evaluate("navigator.userAgent").replace("HeadlessChrome", "Chrome")
-                probe.close()
+            browser, context_options = launch_browser(playwright)
             try:
                 for division in divisions:
                     if action == "rename" and not rename_plans[division]:
@@ -628,7 +610,7 @@ def main(default_action=None, config=None):
                     context = None
                     results[division] = []
                     try:
-                        context = browser.new_context(service_workers="block", user_agent=user_agent)
+                        context = browser.new_context(service_workers="block", **context_options)
                         credentials = config.MAGENTO_CREDENTIALS[division]
                         if not credentials["username"] or not credentials["password"]:
                             raise CategoryActionError("Missing local Magento credentials.")

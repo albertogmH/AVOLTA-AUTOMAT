@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import time
 from playwright.sync_api import sync_playwright
 from utils.config import MAGENTO_CREDENTIALS, DIVISIONS, DIVISIONS_URL, DIVISIONS_CLP, EMPTY_CLP_VALUES, DEFAULT_CLP_LABEL
-from utils.functions import login_magento_admin
+from utils.functions import launch_browser, log, login_magento_admin
 
 
 def getDefaultValue(page, url):
@@ -14,7 +14,7 @@ def getDefaultValue(page, url):
     try:
         contentSection.wait_for(state="visible", timeout=6000)
     except Exception:
-        print("Default - Content not found")
+        log("Default - Content not found")
         return ''
     contentSection.click()
     selectLocator = page.locator(
@@ -24,7 +24,7 @@ def getDefaultValue(page, url):
     try:
         selectLocator.wait_for(state="visible", timeout=6000)
     except Exception:
-        print("Default - Select not found")
+        log("Default - Select not found")
         return ''
     return selectLocator.evaluate("el => el.options[el.selectedIndex]?.text ?? el.value")
 
@@ -46,15 +46,17 @@ ids = []
 startTime = time.time()
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
-    page = browser.new_page()
+    browser, context_options = launch_browser(p)
+    page = browser.new_context(**context_options).new_page()
 
     adminURL = f"{DIVISIONS_URL[division]}dashboard"
     divisionURL = DIVISIONS_CLP[division]
 
     # Login to the admin panel
     credentials = MAGENTO_CREDENTIALS[division]
+    log(f"{division.upper()} - logging in to Magento admin...")
     login_magento_admin(page, adminURL, credentials["username"], credentials["password"])
+    log(f"{division.upper()} - logged in; reading store views of category {categoryId}...")
 
     # Get store views IDs
     page.goto(divisionURL.format(category_id=categoryId, store_id=1))
@@ -62,21 +64,22 @@ with sync_playwright() as p:
     storeviews = page.locator(".store-switcher ul.dropdown-menu li.store-switcher-store-view a").evaluate_all(
         "elements => Object.fromEntries(elements.filter(el => el.getAttribute('data-value') !== null).map(el => [el.getAttribute('data-value'), el.textContent.trim()]))"
     )
-    print ("Storeview IDs found")
+    log(f"{len(storeviews)} store views found.")
 
     # Get default block value from the category URL without store
     defaultCategoryURL = divisionURL.replace('/store/{store_id}/', '/').format(category_id=categoryId)
     defaultValue = getDefaultValue(page, defaultCategoryURL)
-    print(f"Default value: {defaultValue}")
+    log(f"Default value: {defaultValue}")
 
-    for id, storeview in storeviews.items():
+    for index, (id, storeview) in enumerate(storeviews.items(), 1):
+        log(f"Checking store {id} ({storeview}) ({index}/{len(storeviews)})")
         page.goto(divisionURL.format(category_id=categoryId, store_id=id))
 
         contentSection = page.locator(".fieldset-wrapper.admin__collapsible-block-wrapper:has(span:text('Content'))")
         try:
             contentSection.wait_for(state="visible", timeout=6000)
         except Exception:
-            print(f"ID: {id} - Content not found, skipping")
+            log(f"ID: {id} - Content not found, skipping")
             continue
         contentSection.click()
 
@@ -87,7 +90,7 @@ with sync_playwright() as p:
         try:
             selectLocator.wait_for(state="visible", timeout=6000)
         except Exception:
-            print(f"ID: {id} - Select not found, skipping")
+            log(f"ID: {id} - Select not found, skipping")
             continue
         selectedValue = selectLocator.evaluate("el => el.options[el.selectedIndex]?.text ?? el.value")
 
@@ -99,12 +102,12 @@ with sync_playwright() as p:
         isDefault = any(checkboxLocator.nth(i).is_checked() for i in range(checkboxLocator.count()))
         if isDefault:
             selectedValue = defaultValue
-            print(f"ID: {id} ({storeview}) - {selectedValue} [D]")
+            log(f"ID: {id} ({storeview}) - {selectedValue} [D]")
         else:
-            print(f"ID: {id} ({storeview}) - {selectedValue}")
+            log(f"ID: {id} ({storeview}) - {selectedValue}")
 
         if selectedValue in EMPTY_CLP_VALUES:
-            print(f"ID: {id} ({storeview}) - Empty value, skipping")
+            log(f"ID: {id} ({storeview}) - Empty value, skipping")
             continue
 
         if selectedValue not in blocks:
@@ -115,12 +118,12 @@ with sync_playwright() as p:
 
     browser.close()
 
-print("Blocks found:", blocks)
+log(f"Blocks found: {blocks}")
 for block, storeviews in blocksDetail.items():
-    print(f"Block: {block} - Storeviews: {', '.join(storeviews)}")
+    log(f"Block: {block} - Storeviews: {', '.join(storeviews)}")
 
 elapsed = time.time() - startTime
-print(f"Task done in: {elapsed:.2f} seconds")
+log(f"Task done in: {elapsed:.2f} seconds")
 
 # TODO Cuando una CLP tiene valor por defecto
 #     - tiene checked <input type="checkbox" class="admin__control-checkbox" data-bind="attr: {id: $data.uid + '_default',name: 'use_default[' + $data.index + ']',}, checked: isUseDefault, disable: $data.serviceDisabled" id="QNGSOXF_default" name="use_default[description]">

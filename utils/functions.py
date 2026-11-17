@@ -1,7 +1,33 @@
 """Common helper functions shared across automation scripts."""
 
-from time import monotonic
+import os
+from time import monotonic, strftime
 from urllib.parse import urlsplit
+
+
+def log(message):
+    print(f"[{strftime('%H:%M:%S')}] {message}", flush=True)
+
+
+def show_browser():
+    # Headless by default so no window steals focus; set MAGENTO_SHOW_BROWSER=1 to watch/debug.
+    return os.environ.get("MAGENTO_SHOW_BROWSER", "").strip().lower() in ("1", "true", "yes")
+
+
+def launch_browser(playwright):
+    """Return (browser, context_options). Use browser.new_context(**context_options)."""
+    headless = not show_browser()
+    log("Starting browser" + (" (headless)." if headless else "."))
+    browser = playwright.chromium.launch(headless=headless, channel="chromium" if headless else None)
+    if not headless:
+        return browser, {}
+    # Sites behind a WAF may return 403 to "HeadlessChrome" user agents.
+    probe = browser.new_context()
+    try:
+        user_agent = probe.new_page().evaluate("navigator.userAgent").replace("HeadlessChrome", "Chrome")
+    finally:
+        probe.close()
+    return browser, {"user_agent": user_agent}
 
 
 def login_magento_admin(page, admin_url, username, password, timeout=15000, on_failure=None):
